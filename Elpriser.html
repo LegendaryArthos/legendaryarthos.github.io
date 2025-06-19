@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Elpriser</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      const feeWinter = [8.67, 8.67, 8.67, 8.67, 8.67, 8.67, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 78.01, 78.01, 78.01, 78.01, 26, 26, 26];
+      const feeSummer = [8.67, 8.67, 8.67, 8.67, 8.67, 8.67, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 33.8, 33.8, 33.8, 33.8, 13, 13, 13];
+      const url = new URL(window.location.href);
+      var feeVAT = 1; //Elafgift med reduceret afgift
+      var newVAT = 0
+      var newVAT = url.searchParams.get("VAT");
+//      if newVAT != 0 { feeVAT = Number(newVAT) }
+      var area = 1;  //Vestdanmark, øst=2
+//      var area = url.searchParams.get("Area");
+      const daysOfWeek = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag'];
+      google.charts.load('current', {packages: ['corechart', 'bar']});
+      google.charts.setOnLoadCallback(drawMultiSeries);
+
+      function JSONpromise(dateAdd) {
+        date = new Date()
+        date.setDate(new Date().getDate() + dateAdd)
+        var month = ("0" + (date.getMonth()+1)).slice(-2)
+        var day = ("0" + date.getDate()).slice(-2)
+        var url = 'https://www.elprisenligenu.dk/api/v1/prices/' + date.getFullYear() + '/' + month + '-' + day + '_DK' + area + '.json'
+        return fetch(url).then(resp => {return resp.json()})
+      }
+
+      function drawMultiSeries() {
+        var options = {
+          title: 'Elpriser',
+          isStacked: true,
+//bar: {groupWidth: '90%'},
+          hAxis: {
+            title: '[Dato]',
+            format: 'HH:mm',
+            viewWindow: {min:[0], max:[24]},
+          },
+          vAxis: { title: 'Elpris i øre' },
+       };
+
+        function createTable(jsondata,fee) {
+          var data = new google.visualization.DataTable();
+          data.addColumn('timeofday', 'time');
+          data.addColumn('number', 'Spotpris');
+          data.addColumn('number', 'Elafgift');
+          data.addColumn('number', 'Transport');
+          data.addColumn({type: 'number', role: 'annotation'});
+          for (let i = 0; i <= 23; i++) {
+            spotpris = jsondata[i].DKK_per_kWh * 125
+            data.addRows([[
+              {v:[i, 30]},
+              spotpris,
+              feeVAT,
+              fee[i],
+              Math.round(spotpris+feeVAT+fee[i]),
+              ]]);
+          }
+          return data
+        }
+
+        function getFee(offset) {
+          date = new Date()
+          date.setDate(new Date().getDate() + offset)
+          const month = date.getMonth()
+          if (month >= 3 && month <= 8)
+            { return feeSummer }      // Sommer = april-september
+            else { return feeWinter } // Vinter = oktober-marts
+        }
+
+        var chartToday = new google.visualization.ColumnChart(document.getElementById('chartToday'));
+        const offsetToday = 0
+        var jsonToday = JSONpromise(offsetToday)
+        jsonToday.then((jsondata) => {
+          options.hAxis.title = daysOfWeek[(new Date().getDay()+offsetToday)%7];
+          chartToday.draw(createTable(jsondata,getFee(offsetToday)), options);
+          document.getElementById('textToday').innerHTML = "";
+        })
+
+        var chartTomorrow = new google.visualization.ColumnChart(document.getElementById('chartTomorrow'));
+        const offsetTomorrow = 1
+        var jsonTomorrow = JSONpromise(offsetTomorrow)
+        jsonTomorrow.then((jsondata) => {
+          options.hAxis.title = daysOfWeek[(new Date().getDay()+offsetTomorrow)%7];
+          chartTomorrow.draw(createTable(jsondata,getFee(offsetTomorrow)), options);
+          document.getElementById('textTomorrow').innerHTML = "";
+        })
+      }
+    </script>
+  </head>
+  <body>
+    <div id="chartToday"></div><div id="textToday">Henter data for i dag...</div>
+    <div id="chartTomorrow"></div><div id="textTomorrow"><h3>Data for i morgen findes ikke endnu...</h3></div>
+    <p><br>
+      Gasovn yder 4,2 kW med 3 brændere og bruger 305 g gas/time<br>
+      11 kg gas = 140 kWh og koster 219 kr/flaske = 1,57 kr/kWh
+    </p>
+    <p>1 kg brænde = 3,9 kWh<br>
+      Brændeovn, virkningsgrad ~75% = 2,9 kWh/kg
+    </p>
+  </body>
+</html>
