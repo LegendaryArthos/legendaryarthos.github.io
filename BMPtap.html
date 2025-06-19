@@ -1,0 +1,18 @@
+<html>
+  <head>
+  <title>BPM tapper</title>
+  </head>
+  <body>
+  <div id="bpms">-</div>
+<p>Klik for BPMs<br>
+ESC for reset</p>
+  </body>
+</html>
+<script>
+  const i=["27","Escape"];
+  let o,n=0,s=0,c=[];
+  function l(t){document.querySelectorAll("#bpms").forEach(a=>{a.innerHTML=t.toString()})}
+  function u(){const t=performance.now();if(n){const e=[...c,t-n];e.length>5&&e.shift();const r=e.reduce((p,d)=>p+d,0)/e.length;c=e,s=Math.round(6e4/r),l(s)}n=t,clearTimeout(o),o=setTimeout(()=>{clearTimeout(o),n=0,c=[]},1e3)}
+  function m(){s=0,n=0,c=[],l(s),o&&clearTimeout(o)}document.addEventListener("keydown",t=>{i.includes(t.key)||i.includes(t.code)?m():u()});
+  document.addEventListener("click",()=>{u()});
+</script>
